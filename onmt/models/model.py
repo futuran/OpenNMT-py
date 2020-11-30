@@ -12,9 +12,11 @@ class NMTModel(nn.Module):
       decoder (onmt.decoders.DecoderBase): a decoder object
     """
 
-    def __init__(self, encoder, decoder):
+    def __init__(self, encoder, encoder2, decoder):
         super(NMTModel, self).__init__()
         self.encoder = encoder
+        self.encoder2 = encoder2
+        #self.weight = torch.autograd.Variable(xxxxx)
         self.decoder = decoder
 
     def forward(self, src, tgt, lengths, bptt=False, with_align=False):
@@ -43,6 +45,14 @@ class NMTModel(nn.Module):
         dec_in = tgt[:-1]  # exclude last target from inputs
 
         enc_state, memory_bank, lengths = self.encoder(src, lengths)
+        enc_state2, memory_bank2, lengths2 = self.encoder(src, lengths)
+        #print(enc_state.size())
+        #print(memory_bank.size())
+        #print(lengths.size())
+
+        enc_state = (enc_state + enc_state2) / 2
+        memory_bank =(memory_bank + memory_bank2) / 2
+
 
         if bptt is False:
             self.decoder.init_state(src, memory_bank, enc_state)
@@ -53,4 +63,5 @@ class NMTModel(nn.Module):
 
     def update_dropout(self, dropout):
         self.encoder.update_dropout(dropout)
+        self.encoder2.update_dropout(dropout)
         self.decoder.update_dropout(dropout)

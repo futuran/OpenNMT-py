@@ -125,6 +125,7 @@ class Dataset(TorchtextDataset):
                 ex_dict["corpus_id"] = "train"
             if can_copy:
                 src_field = fields['src']
+                sim_field = fields['sim'] #29291129 tmr add sim
                 tgt_field = fields['tgt']
                 # this assumes src_field and tgt_field are both text
                 src_ex_vocab, ex_dict = _dynamic_dict(

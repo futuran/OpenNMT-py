@@ -102,6 +102,7 @@ def parse_align_idx(align_pharaoh):
 def get_fields(
     src_data_type,
     n_src_feats,
+    n_sim_feats,
     n_tgt_feats,
     pad='<blank>',
     bos='<s>',
@@ -109,8 +110,10 @@ def get_fields(
     dynamic_dict=False,
     with_align=False,
     src_truncate=None,
+    sim_truncate=None,
     tgt_truncate=None
 ):
+    #tmr20201129 add sim
     """
     Args:
         src_data_type: type of the source input. Options are [text|img|audio].
@@ -147,14 +150,24 @@ def get_fields(
                       "img": image_fields,
                       "audio": audio_fields,
                       "vec": vec_fields}
+    
 
     src_field_kwargs = {"n_feats": n_src_feats,
                         "include_lengths": True,
                         "pad": pad, "bos": None, "eos": None,
                         "truncate": src_truncate,
                         "base_name": "src"}
-    fields["src"] = fields_getters[src_data_type](**src_field_kwargs)
 
+    #tmr20201129 add sim
+    sim_field_kwargs = {"n_feats": n_sim_feats,
+                        "include_lengths": True,
+                        "pad": pad, "bos": None, "eos": None,
+                        "truncate": src_truncate,
+                        "base_name": "src"}
+    
+    fields["src"] = fields_getters[src_data_type](**src_field_kwargs)
+    fields["sim"] = fields_getters[src_data_type](**sim_field_kwargs) #tmr20201129 add sim
+    
     tgt_field_kwargs = {"n_feats": n_tgt_feats,
                         "include_lengths": False,
                         "pad": pad, "bos": bos, "eos": eos,
@@ -210,7 +223,7 @@ def load_old_vocab(vocab, data_type="text", dynamic_dict=False):
         n_src_features = sum('src_feat_' in k for k in vocab)
         n_tgt_features = sum('tgt_feat_' in k for k in vocab)
         fields = get_fields(
-            data_type, n_src_features, n_tgt_features,
+            data_type, n_src_features, n_src_features, n_tgt_features,
             dynamic_dict=dynamic_dict)
         for n, f in fields.items():
             try:

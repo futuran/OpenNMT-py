@@ -142,11 +142,15 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
     if model_opt.model_type == "text" or model_opt.model_type == "vec":
         src_field = fields["src"]
         src_emb = build_embeddings(model_opt, src_field)
+        
+        #KOKO!!!!!!
+        print("here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!")
     else:
         src_emb = None
 
     # Build encoder.
     encoder = build_encoder(model_opt, src_emb)
+    encoder2 = build_encoder(model_opt, src_emb)
 
     # Build decoder.
     tgt_field = fields["tgt"]
@@ -169,7 +173,7 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
         device = torch.device("cuda")
     elif not gpu:
         device = torch.device("cpu")
-    model = onmt.models.NMTModel(encoder, decoder)
+    model = onmt.models.NMTModel(encoder, encoder2, decoder)
 
     # Build Generator.
     if not model_opt.copy_attn:

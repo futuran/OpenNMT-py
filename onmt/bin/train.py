@@ -33,6 +33,7 @@ def train(opt):
         vocab = checkpoint['vocab']
     else:
         vocab = torch.load(opt.data + '.vocab.pt')
+        print(vocab['sim'].fields['src'])
 
     # check for code where vocab is saved instead of fields
     # (in the future this will be done in a smarter way)
@@ -87,6 +88,7 @@ def train(opt):
     elif nb_gpu == 1:  # case 1 GPU only
         single_main(opt, 0)
     else:   # case only CPU
+        print("CPU version")
         single_main(opt, -1)
 
 
