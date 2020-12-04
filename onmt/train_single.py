@@ -67,10 +67,14 @@ def main(opt, device_id, batch_queue=None, semaphore=None):
         fields = load_old_vocab(
             vocab, opt.model_type, dynamic_dict=opt.copy_attn)
     else:
+        #20201201 tmr memo / kokonikuru
         fields = vocab
+        print(f'{vocab=}')
+        print(f"{vocab['src'].fields=}")
+        print(f"{vocab['src'].fields[0][1].vocab.freqs=}")
 
     # Report src and tgt vocab sizes, including for features
-    for side in ['src', 'tgt']:
+    for side in ['src', 'sim', 'tgt']:  #20201201 tmr add sim
         f = fields[side]
         try:
             f_iter = iter(f)
@@ -79,6 +83,8 @@ def main(opt, device_id, batch_queue=None, semaphore=None):
         for sn, sf in f_iter:
             if sf.use_vocab:
                 logger.info(' * %s vocab size = %d' % (sn, len(sf.vocab)))
+
+    print('aaaaaaaaaaaaaaaaaaaaa')
 
     # Build model.
     model = build_model(model_opt, opt, fields, checkpoint)

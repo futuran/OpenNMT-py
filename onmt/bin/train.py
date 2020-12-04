@@ -33,7 +33,7 @@ def train(opt):
         vocab = checkpoint['vocab']
     else:
         vocab = torch.load(opt.data + '.vocab.pt')
-        print(vocab['sim'].fields['src'])
+        print(vocab['sim'])
 
     # check for code where vocab is saved instead of fields
     # (in the future this will be done in a smarter way)

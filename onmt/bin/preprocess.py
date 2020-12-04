@@ -48,7 +48,7 @@ def process_one_shard(corpus_params, params):
     i, (src_shard, sim_shard, tgt_shard, align_shard, maybe_id, filter_pred) = params
     # create one counter per shard
     sub_sub_counter = defaultdict(Counter)
-    print(sub_sub_counter)
+    print(f'{sub_sub_counter=}')
     assert len(src_shard) == len(tgt_shard)
     logger.info("Building shard %d." % i)
 
@@ -145,7 +145,7 @@ def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, align_reader
         ids = [None]
         aligns = [opt.valid_align]
 
-    src_vocab, tgt_vocab, existing_fields = maybe_load_vocab(corpus_type, counters, opt)
+    src_vocab, tgt_vocab, existing_fields = maybe_load_vocab(corpus_type, counters, opt)    #This function will be called. But in tmr config, src_vocab=None
 
     existing_shards = check_existing_pt_files(opt, corpus_type, ids, existing_fields)
 
@@ -269,8 +269,12 @@ def preprocess(opt):
         dynamic_dict=opt.dynamic_dict,
         with_align=opt.train_align[0] is not None,
         src_truncate=opt.src_seq_length_trunc,
+        sim_truncate=opt.sim_seq_length_trunc,  #20201201 tmr add sim
         tgt_truncate=opt.tgt_seq_length_trunc)
-    print(fields)
+
+    print(f'{fields=}')
+    print(f"{fields['sim'].fields=}")
+    print(f"{fields['sim'].fields[0][1]=}")
 
     src_reader = inputters.str2reader[opt.data_type].from_opt(opt)
     tgt_reader = inputters.str2reader["text"].from_opt(opt)

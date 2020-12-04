@@ -110,7 +110,7 @@ def get_fields(
     dynamic_dict=False,
     with_align=False,
     src_truncate=None,
-    sim_truncate=None,
+    sim_truncate=None,  #20201129 tmr add sim
     tgt_truncate=None
 ):
     #tmr20201129 add sim
@@ -162,7 +162,7 @@ def get_fields(
     sim_field_kwargs = {"n_feats": n_sim_feats,
                         "include_lengths": True,
                         "pad": pad, "bos": None, "eos": None,
-                        "truncate": src_truncate,
+                        "truncate": sim_truncate,
                         "base_name": "src"}
     
     fields["src"] = fields_getters[src_data_type](**src_field_kwargs)
