@@ -21,7 +21,7 @@ def _join_dicts(*args):
     return dict(chain(*[d.items() for d in args]))
 
 
-def _dynamic_dict(example, src_field, tgt_field):
+def _dynamic_dict(example, src_field, sim_field, tgt_field):    #20201209 tmr add sim
     """Create copy-vocab and numericalize with it.
 
     In-place adds ``"src_map"`` to ``example``. That is the copy-vocab
@@ -42,22 +42,31 @@ def _dynamic_dict(example, src_field, tgt_field):
     """
 
     src = src_field.tokenize(example["src"])
+    sim = sim_field.tokenize(example["sim"]) #20201209 tme add sim
     # make a small vocab containing just the tokens in the source sequence
     unk = src_field.unk_token
     pad = src_field.pad_token
     src_ex_vocab = Vocab(Counter(src), specials=[unk, pad])
+    sim_ex_vocab = Vocab(Counter(sim), specials=[unk, pad]) #20201209 tmr add sim
     unk_idx = src_ex_vocab.stoi[unk]
+
+    
     # Map source tokens to indices in the dynamic dict.
     src_map = torch.LongTensor([src_ex_vocab.stoi[w] for w in src])
     example["src_map"] = src_map
     example["src_ex_vocab"] = src_ex_vocab
+    
+    # Map source tokens to indices in the dynamic dict. #20201209 tme add sim
+    sim_map = torch.LongTensor([sim_ex_vocab.stoi[w] for w in sim])
+    example["sim_map"] = sim_map
+    example["sim_ex_vocab"] = sim_ex_vocab
 
     if "tgt" in example:
         tgt = tgt_field.tokenize(example["tgt"])
         mask = torch.LongTensor(
             [unk_idx] + [src_ex_vocab.stoi[w] for w in tgt] + [unk_idx])
         example["alignment"] = mask
-    return src_ex_vocab, example
+    return src_ex_vocab, sim_ex_vocab, example
 
 
 class Dataset(TorchtextDataset):
@@ -117,6 +126,7 @@ class Dataset(TorchtextDataset):
 
         # self.src_vocabs is used in collapse_copy_scores and Translator.py
         self.src_vocabs = []
+        self.sim_vocabs = []    #20201209 tmr add sim
         examples = []
         for ex_dict in starmap(_join_dicts, zip(*read_iters)):
             if corpus_id is not None:
@@ -128,9 +138,9 @@ class Dataset(TorchtextDataset):
                 sim_field = fields['sim'] #29291129 tmr add sim
                 tgt_field = fields['tgt']
                 # this assumes src_field and tgt_field are both text
-                src_ex_vocab, ex_dict = _dynamic_dict(
-                    ex_dict, src_field.base_field, tgt_field.base_field)
+                src_ex_vocab, ex_dict = _dynamic_dict(ex_dict, src_field.base_field, sim_field.base_field, tgt_field.base_field)    #20201209 tmr add sim
                 self.src_vocabs.append(src_ex_vocab)
+                self.sim_vocabs.append(sim_ex_vocab)    #20201209 tmr add sim
             ex_fields = {k: [(k, v)] for k, v in fields.items() if
                          k in ex_dict}
             ex = Example.fromdict(ex_dict, ex_fields)

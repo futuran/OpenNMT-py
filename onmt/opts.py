@@ -26,6 +26,9 @@ def model_opts(parser):
     group.add('--src_word_vec_size', '-src_word_vec_size',
               type=int, default=500,
               help='Word embedding size for src.')
+    group.add('--sim_word_vec_size', '-sim_word_vec_size',  #20201206 tmr add sim
+              type=int, default=500,
+              help='Word embedding size for sim.')
     group.add('--tgt_word_vec_size', '-tgt_word_vec_size',
               type=int, default=500,
               help='Word embedding size for tgt.')
@@ -234,6 +237,8 @@ def preprocess_opts(parser):
 
     group.add('--src_dir', '-src_dir', default="",
               help="Source directory for image or audio files.")
+    group.add('--sim_dir', '-sim_dir', default="",
+              help="Source2(sim) directory for image or audio files.")
 
     group.add('--save_data', '-save_data', required=True,
               help="Output file for the prepared data")
@@ -264,6 +269,9 @@ def preprocess_opts(parser):
     group.add('--src_vocab', '-src_vocab', default="",
               help="Path to an existing source vocabulary. Format: "
                    "one word per line.")
+    group.add('--sim_vocab', '-sim_vocab', default="",
+              help="Path to an existing source2(sim) vocabulary. Format: "   #20201206 tmr add sim
+                   "one word per line.")
     group.add('--tgt_vocab', '-tgt_vocab', default="",
               help="Path to an existing target vocabulary. Format: "
                    "one word per line.")
@@ -272,6 +280,8 @@ def preprocess_opts(parser):
               help="Path prefix to existing features vocabularies")
     group.add('--src_vocab_size', '-src_vocab_size', type=int, default=50000,
               help="Size of the source vocabulary")
+    group.add('--sim_vocab_size', '-sim_vocab_size', type=int, default=50000,   #20201206 tmr add sim
+              help="Size of the source2(sim) vocabulary")
     group.add('--tgt_vocab_size', '-tgt_vocab_size', type=int, default=50000,
               help="Size of the target vocabulary")
     group.add('--vocab_size_multiple', '-vocab_size_multiple',
@@ -280,6 +290,8 @@ def preprocess_opts(parser):
 
     group.add('--src_words_min_frequency',
               '-src_words_min_frequency', type=int, default=0)
+    group.add('--sim_words_min_frequency',
+              '-sim_words_min_frequency', type=int, default=0)   #20201206 tmr add sim
     group.add('--tgt_words_min_frequency',
               '-tgt_words_min_frequency', type=int, default=0)
 
@@ -426,6 +438,10 @@ def train_opts(parser):
               help="If a valid path is specified, then this will load "
                    "pretrained word embeddings on the encoder side. "
                    "See README for specific formatting instructions.")
+    group.add('--pre_word_vecs_enc2', '-pre_word_vecs_enc2',
+              help="If a valid path is specified, then this will load "    #20201206 tmr add enc2
+                   "pretrained word embeddings on the encoder2 side. "
+                   "See README for specific formatting instructions.")
     group.add('--pre_word_vecs_dec', '-pre_word_vecs_dec',
               help="If a valid path is specified, then this will load "
                    "pretrained word embeddings on the decoder side. "
@@ -434,6 +450,9 @@ def train_opts(parser):
     group.add('--fix_word_vecs_enc', '-fix_word_vecs_enc',
               action='store_true',
               help="Fix word embeddings on the encoder side.")
+    group.add('--fix_word_vecs_enc2', '-fix_word_vecs_enc2',    #20201206 tmr add enc2
+              action='store_true',
+              help="Fix word embeddings on the encoder2 side.")
     group.add('--fix_word_vecs_dec', '-fix_word_vecs_dec',
               action='store_true',
               help="Fix word embeddings on the decoder side.")
@@ -545,9 +564,16 @@ def train_opts(parser):
     group.add("--src_noise", "-src_noise", type=str, nargs='+',
               default=[],
               choices=onmt.modules.source_noise.MultiNoise.NOISES.keys())
+    group.add("--sim_noise", "-sim_noise", type=str, nargs='+',
+              default=[],
+              choices=onmt.modules.source_noise.MultiNoise.NOISES.keys())   #20201206 tmr add sim
     group.add("--src_noise_prob", "-src_noise_prob", type=float, nargs='+',
               default=[],
               help="Probabilities of src_noise functions")
+    group.add("--sim_noise_prob", "-sim_noise_prob", type=float, nargs='+',   #20201206 tmr add sim
+              default=[],
+              help="Probabilities of sim_noise functions")
+
 
     # learning rate
     group = parser.add_argument_group('Optimization- Rate')
@@ -635,8 +661,13 @@ def translate_opts(parser):
     group.add('--src', '-src', required=True,
               help="Source sequence to decode (one line per "
                    "sequence)")
+    group.add('--sim', '-sim', required=True,
+              help="Source2(sim) sequence to decode (one line per "   #20201206 tmr add sim
+                   "sequence)")
     group.add('--src_dir', '-src_dir', default="",
               help='Source directory for image or audio files')
+    group.add('--sim_dir', '-sim_dir', default="",
+              help='Source2(sim) directory for image or audio files')   #20201206 tmr add sim
     group.add('--tgt', '-tgt',
               help='True target sequence (optional)')
     group.add('--shard_size', '-shard_size', type=int, default=10000,

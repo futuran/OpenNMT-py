@@ -1,5 +1,6 @@
 """ Onmt NMT Model base class definition """
 import torch.nn as nn
+import torch
 
 
 class NMTModel(nn.Module):
@@ -17,9 +18,10 @@ class NMTModel(nn.Module):
         self.encoder = encoder
         self.encoder2 = encoder2
         #self.weight = torch.autograd.Variable(xxxxx)
+        self.pooler = nn.AdaptiveAvgPool1d(10)
         self.decoder = decoder
 
-    def forward(self, src, tgt, lengths, bptt=False, with_align=False):
+    def forward(self, src, sim, tgt, src_lengths, sim_lengths, bptt=False, with_align=False):
         """Forward propagate a `src` and `tgt` pair for training.
         Possible initialized with a beginning decoder state.
 
@@ -44,14 +46,17 @@ class NMTModel(nn.Module):
         """
         dec_in = tgt[:-1]  # exclude last target from inputs
 
-        enc_state, memory_bank, lengths = self.encoder(src, lengths)
-        enc_state2, memory_bank2, lengths2 = self.encoder(src, lengths)
-        #print(enc_state.size())
-        #print(memory_bank.size())
-        #print(lengths.size())
+        enc_state, memory_bank, lengths = self.encoder(src, src_lengths)
+        enc_pooled = self.pooler(enc_state.transpose(2,0)).transpose(2,0)
 
-        enc_state = (enc_state + enc_state2) / 2
-        memory_bank =(memory_bank + memory_bank2) / 2
+        enc_state2, memory_bank2, lengths2 = self.encoder(sim, sim_lengths)
+        #print(enc_state.size())
+        #print(enc_state2.size())
+        #print(lengths.size())
+        
+
+        #enc_state = (enc_state + enc_state2) / 2
+        #memory_bank =(memory_bank + memory_bank2) / 2
 
 
         if bptt is False:

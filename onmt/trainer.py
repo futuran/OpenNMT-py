@@ -75,6 +75,23 @@ def build_trainer(opt, device_id, model, fields, optim, model_saver=None):
             device_id=device_id
         )
 
+    if len(opt.sim_noise) > 0:  #20201206 tmr add sim
+        sim_field = dict(fields)["sim"].base_field
+        corpus_id_field = dict(fields).get("corpus_id", None)
+        if corpus_id_field is not None:
+            ids_to_noise = corpus_id_field.numericalize(opt.data_to_noise)
+        else:
+            ids_to_noise = None
+        source_noise = onmt.modules.source_noise.MultiNoise(
+            opt.sim_noise,
+            opt.sim_noise_prob,
+            ids_to_noise=ids_to_noise,
+            pad_idx=sim_field.pad_token,
+            end_of_sentence_mask=sim_field.end_of_sentence_mask,
+            word_start_mask=sim_field.word_start_mask,
+            device_id=device_id
+        )
+
     report_manager = onmt.utils.build_report_manager(opt, gpu_rank)
     trainer = onmt.Trainer(model, train_loss, valid_loss, optim, trunc_size,
                            shard_size, norm_method,
@@ -332,10 +349,14 @@ class Trainer(object):
             for batch in valid_iter:
                 src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                                    else (batch.src, None)
+                #20201206 tmr add sim
+                sim, sim_lengths = batch.sim if isinstance(batch.sim, tuple) \
+                                   else (batch.sim, None)
                 tgt = batch.tgt
 
+                #20201206 tmr add sim
                 # F-prop through the model.
-                outputs, attns = valid_model(src, tgt, src_lengths,
+                outputs, attns = valid_model(src, sim, tgt, src_lengths,sim_lengths,
                                              with_align=self.with_align)
 
                 # Compute loss.
@@ -373,6 +394,13 @@ class Trainer(object):
             if src_lengths is not None:
                 report_stats.n_src_words += src_lengths.sum().item()
 
+            #20201206 tmr add sim
+            sim, sim_lengths = batch.sim if isinstance(batch.sim, tuple) \
+                else (batch.sim, None)
+            if sim_lengths is not None:
+                report_stats.n_src_words += sim_lengths.sum().item()    #!!!!20201206 add n_src_words, is it okay?
+
+
             tgt_outer = batch.tgt
 
             bptt = False
@@ -384,7 +412,8 @@ class Trainer(object):
                 if self.accum_count == 1:
                     self.optim.zero_grad()
 
-                outputs, attns = self.model(src, tgt, src_lengths, bptt=bptt,
+                #20201206 tmr add sim
+                outputs, attns = self.model(src,sim, tgt, src_lengths, sim_lengths, bptt=bptt,
                                             with_align=self.with_align)
                 bptt = True
 

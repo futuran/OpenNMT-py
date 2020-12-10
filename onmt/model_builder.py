@@ -143,14 +143,20 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
         src_field = fields["src"]
         src_emb = build_embeddings(model_opt, src_field)
         
-        #KOKO!!!!!!
-        print("here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!here!")
     else:
         src_emb = None
 
+    if model_opt.model_type == "text" or model_opt.model_type == "vec": #20201206 tmr add sim
+        sim_field = fields["sim"]
+        sim_emb = build_embeddings(model_opt, sim_field)
+        
+    else:
+        sim_emb = None
+    #end tme
+
     # Build encoder.
     encoder = build_encoder(model_opt, src_emb)
-    encoder2 = build_encoder(model_opt, src_emb)
+    encoder2 = build_encoder(model_opt, sim_emb)    #20201206 tmr add sim
 
     # Build decoder.
     tgt_field = fields["tgt"]
@@ -163,6 +169,8 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
             "preprocess with -share_vocab if you use share_embeddings"
 
         tgt_emb.word_lut.weight = src_emb.word_lut.weight
+        sim_emb.word_lut.weight = src_emb.word_lut.weight    #20201206 tmr add sim
+        
 
     decoder = build_decoder(model_opt, tgt_emb)
 
@@ -230,6 +238,9 @@ def build_base_model(model_opt, fields, gpu, checkpoint=None, gpu_id=None):
         if hasattr(model.encoder, 'embeddings'):
             model.encoder.embeddings.load_pretrained_vectors(
                 model_opt.pre_word_vecs_enc)
+        if hasattr(model.encoder2, 'embeddings'):
+            model.encoder2.embeddings.load_pretrained_vectors(
+                model_opt.pre_word_vecs_enc2)
         if hasattr(model.decoder, 'embeddings'):
             model.decoder.embeddings.load_pretrained_vectors(
                 model_opt.pre_word_vecs_dec)

@@ -106,6 +106,7 @@ class Translator(object):
             model,
             fields,
             src_reader,
+            sim_reader, #20201209 tmr add sim
             tgt_reader,
             gpu=-1,
             n_best=1,
@@ -162,6 +163,7 @@ class Translator(object):
         self._exclusion_idxs = {
             self._tgt_vocab.stoi[t] for t in self.ignore_when_blocking}
         self.src_reader = src_reader
+        self.sim_reader = sim_reader    #20201209 tmr add sim
         self.tgt_reader = tgt_reader
         self.replace_unk = replace_unk
         if self.replace_unk and not self.model.decoder.attentional:
@@ -230,11 +232,13 @@ class Translator(object):
         """
 
         src_reader = inputters.str2reader[opt.data_type].from_opt(opt)
+        sim_reader = inputters.str2reader[opt.data_type].from_opt(opt)  #20201209 tmr add sim
         tgt_reader = inputters.str2reader["text"].from_opt(opt)
         return cls(
             model,
             fields,
             src_reader,
+            sim_reader, #20201209 tmr add sim
             tgt_reader,
             gpu=opt.gpu,
             n_best=opt.n_best,
@@ -281,8 +285,10 @@ class Translator(object):
     def translate(
             self,
             src,
+            sim,    #20201206 tmr add
             tgt=None,
             src_dir=None,
+            sim_dir=None,    #20201206 tmr add
             batch_size=None,
             batch_type="sents",
             attn_debug=False,
@@ -311,9 +317,10 @@ class Translator(object):
             raise ValueError("batch_size must be set")
 
         src_data = {"reader": self.src_reader, "data": src, "dir": src_dir}
+        sim_data = {"reader": self.src_reader, "data": sim, "dir": sim_dir}    #20201206 tmr add
         tgt_data = {"reader": self.tgt_reader, "data": tgt, "dir": None}
         _readers, _data, _dir = inputters.Dataset.config(
-            [('src', src_data), ('tgt', tgt_data)])
+            [('src', src_data), ('sim', sim_data), ('tgt', tgt_data)])    #20201206 tmr add
 
         # corpus_id field is useless here
         if self.fields.get("corpus_id", None) is not None:
@@ -351,9 +358,7 @@ class Translator(object):
         start_time = time.time()
 
         for batch in data_iter:
-            batch_data = self.translate_batch(
-                batch, data.src_vocabs, attn_debug
-            )
+            batch_data = self.translate_batch(batch, data.src_vocabs, data.sim_vocabs, attn_debug)
             translations = xlation_builder.from_batch(batch_data)
 
             for trans in translations:
@@ -514,7 +519,7 @@ class Translator(object):
             alignment_attn, prediction_mask, src_lengths, n_best)
         return alignement
 
-    def translate_batch(self, batch, src_vocabs, attn_debug):
+    def translate_batch(self, batch, src_vocabs, sim_vocabs, attn_debug):
         """Translate a batch of sentences."""
         with torch.no_grad():
             if self.beam_size == 1:
@@ -546,15 +551,18 @@ class Translator(object):
                     exclusion_tokens=self._exclusion_idxs,
                     stepwise_penalty=self.stepwise_penalty,
                     ratio=self.ratio)
-            return self._translate_batch_with_strategy(batch, src_vocabs,
-                                                       decode_strategy)
-
+            return self._translate_batch_with_strategy(batch, src_vocabs, sim_vocabs, decode_strategy)
+    
+    #20121206 tmr add sim
     def _run_encoder(self, batch):
         src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                            else (batch.src, None)
+        sim, sim_lengths = batch.sim if isinstance(batch.sim, tuple) \
+                           else (batch.sim, None)
 
-        enc_states, memory_bank, src_lengths = self.model.encoder(
-            src, src_lengths)
+        enc_states, memory_bank, src_lengths = self.model.encoder(src, src_lengths)
+        enc_states2, memory_bank2, sim_lengths = self.model.encoder(sim, sim_lengths)
+
         if src_lengths is None:
             assert not isinstance(memory_bank, tuple), \
                 'Ensemble decoding only supported for text data'
@@ -564,14 +572,19 @@ class Translator(object):
                                .fill_(memory_bank.size(0))
         return src, enc_states, memory_bank, src_lengths
 
+
+
+
     def _decode_and_generate(
             self,
             decoder_in,
             memory_bank,
             batch,
             src_vocabs,
+            sim_vocabs, #20201209 tmr add sim
             memory_lengths,
             src_map=None,
+            sim_map=None, #20201209 tmr add sim
             step=None,
             batch_offset=None):
         if self.copy_attn:
@@ -626,6 +639,7 @@ class Translator(object):
             self,
             batch,
             src_vocabs,
+            sim_vocabs, #20201209 tmr add sim
             decode_strategy):
         """Translate a batch of sentences step by step using cache.
 
@@ -645,6 +659,7 @@ class Translator(object):
 
         # (1) Run the encoder on the src.
         src, enc_states, memory_bank, src_lengths = self._run_encoder(batch)
+        print(batch)
         self.model.decoder.init_state(src, memory_bank, enc_states)
 
         results = {
@@ -658,6 +673,7 @@ class Translator(object):
 
         # (2) prep decode_strategy. Possibly repeat src objects.
         src_map = batch.src_map if use_src_map else None
+        sim_map = batch.src_map if use_src_map else None
         fn_map_state, memory_bank, memory_lengths, src_map = \
             decode_strategy.initialize(memory_bank, src_lengths, src_map)
         if fn_map_state is not None:
@@ -672,6 +688,7 @@ class Translator(object):
                 memory_bank,
                 batch,
                 src_vocabs,
+                sim_vocabs, #20201209 tmr add sim
                 memory_lengths=memory_lengths,
                 src_map=src_map,
                 step=step,

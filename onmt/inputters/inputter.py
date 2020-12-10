@@ -163,7 +163,7 @@ def get_fields(
                         "include_lengths": True,
                         "pad": pad, "bos": None, "eos": None,
                         "truncate": sim_truncate,
-                        "base_name": "src"}
+                        "base_name": "sim"}
     
     fields["src"] = fields_getters[src_data_type](**src_field_kwargs)
     fields["sim"] = fields_getters[src_data_type](**sim_field_kwargs) #tmr20201129 add sim
@@ -380,12 +380,15 @@ def _build_fv_from_multifield(multifield, counters, build_fv_args,
 def _build_fields_vocab(fields, counters, data_type, share_vocab,
                         vocab_size_multiple,
                         src_vocab_size, src_words_min_frequency,
+                        sim_vocab_size, sim_words_min_frequency,    #20201206 tmr add sim
                         tgt_vocab_size, tgt_words_min_frequency,
                         subword_prefix="▁",
                         subword_prefix_is_joiner=False):
     build_fv_args = defaultdict(dict)
     build_fv_args["src"] = dict(
         max_size=src_vocab_size, min_freq=src_words_min_frequency)
+    build_fv_args["sim"] = dict(
+        max_size=sim_vocab_size, min_freq=sim_words_min_frequency)
     build_fv_args["tgt"] = dict(
         max_size=tgt_vocab_size, min_freq=tgt_words_min_frequency)
     tgt_multifield = fields["tgt"]
@@ -407,13 +410,23 @@ def _build_fields_vocab(fields, counters, data_type, share_vocab,
             build_fv_args,
             size_multiple=vocab_size_multiple if not share_vocab else 1)
 
+        #20201206 tmr add sim
+        sim_multifield = fields["sim"]
+        _build_fv_from_multifield(
+            sim_multifield,
+            counters,
+            build_fv_args,
+            size_multiple=vocab_size_multiple if not share_vocab else 1)
+        #end 20201206 tmr add sim
+
         if share_vocab:
             # `tgt_vocab_size` is ignored when sharing vocabularies
-            logger.info(" * merging src and tgt vocab...")
+            logger.info(" * merging src and sim and tgt vocab...")
             src_field = src_multifield.base_field
+            sim_field = sim_multifield.base_field
             tgt_field = tgt_multifield.base_field
             _merge_field_vocabs(
-                src_field, tgt_field, vocab_size=src_vocab_size,
+                src_field, sim_field, tgt_field, vocab_size=src_vocab_size, #20201206 tmr add sim
                 min_freq=src_words_min_frequency,
                 vocab_size_multiple=vocab_size_multiple)
             logger.info(" * merged vocab size: %d." % len(src_field.vocab))
@@ -543,14 +556,14 @@ def build_vocab(train_dataset_files, fields, data_type, share_vocab,
     return fields  # is the return necessary?
 
 
-def _merge_field_vocabs(src_field, tgt_field, vocab_size, min_freq,
+def _merge_field_vocabs(src_field,sim_field, tgt_field, vocab_size, min_freq,   #20201206 tmr add sim
                         vocab_size_multiple):
     # in the long run, shouldn't it be possible to do this by calling
     # build_vocab with both the src and tgt data?
     specials = [tgt_field.unk_token, tgt_field.pad_token,
                 tgt_field.init_token, tgt_field.eos_token]
     merged = sum(
-        [src_field.vocab.freqs, tgt_field.vocab.freqs], Counter()
+        [src_field.vocab.freqs, sim_field.vocab.freqs, tgt_field.vocab.freqs], Counter()    #20201206 tmr add sim
     )
     merged_vocab = Vocab(
         merged, specials=specials,
@@ -559,6 +572,7 @@ def _merge_field_vocabs(src_field, tgt_field, vocab_size, min_freq,
     if vocab_size_multiple > 1:
         _pad_vocab_to_multiple(merged_vocab, vocab_size_multiple)
     src_field.vocab = merged_vocab
+    sim_field.vocab = merged_vocab  #20201206 tmr add sim
     tgt_field.vocab = merged_vocab
     assert len(src_field.vocab) == len(tgt_field.vocab)
 

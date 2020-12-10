@@ -208,6 +208,7 @@ def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, align_reader
                 fields, counters, opt.data_type,
                 opt.share_vocab, opt.vocab_size_multiple,
                 opt.src_vocab_size, opt.src_words_min_frequency,
+                opt.sim_vocab_size, opt.sim_words_min_frequency,    #20201206 tmr add sim
                 opt.tgt_vocab_size, opt.tgt_words_min_frequency,
                 subword_prefix=opt.subword_prefix,
                 subword_prefix_is_joiner=opt.subword_prefix_is_joiner)
@@ -272,9 +273,6 @@ def preprocess(opt):
         sim_truncate=opt.sim_seq_length_trunc,  #20201201 tmr add sim
         tgt_truncate=opt.tgt_seq_length_trunc)
 
-    print(f'{fields=}')
-    print(f"{fields['sim'].fields=}")
-    print(f"{fields['sim'].fields[0][1]=}")
 
     src_reader = inputters.str2reader[opt.data_type].from_opt(opt)
     tgt_reader = inputters.str2reader["text"].from_opt(opt)

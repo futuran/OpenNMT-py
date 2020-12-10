@@ -26,8 +26,8 @@ class TranslationBuilder(object):
                  has_tgt=False, phrase_table=""):
         self.data = data
         self.fields = fields
-        self._has_text_src = isinstance(
-            dict(self.fields)["src"], TextMultiField)
+        self._has_text_src = isinstance(dict(self.fields)["src"], TextMultiField)
+        self._has_text_sim = isinstance(dict(self.fields)["sim"], TextMultiField)   #20201209 tmr add sim
         self.n_best = n_best
         self.replace_unk = replace_unk
         self.phrase_table = phrase_table
@@ -81,6 +81,10 @@ class TranslationBuilder(object):
             src = batch.src[0][:, :, 0].index_select(1, perm)
         else:
             src = None
+        if self._has_text_sim:
+            sim = batch.sim[0][:, :, 0].index_select(1, perm)  #20201209 tme add sim
+        else:
+            sim = None
         tgt = batch.tgt[:, :, 0].index_select(1, perm) \
             if self.has_tgt else None
 
