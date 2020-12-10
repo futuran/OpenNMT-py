@@ -47,21 +47,26 @@ class NMTModel(nn.Module):
         dec_in = tgt[:-1]  # exclude last target from inputs
 
         enc_state, memory_bank, lengths = self.encoder(src, src_lengths)
-        enc_pooled = self.pooler(enc_state.transpose(2,0)).transpose(2,0)
 
         enc_state2, memory_bank2, lengths2 = self.encoder(sim, sim_lengths)
-        #print(enc_state.size())
-        #print(enc_state2.size())
-        #print(lengths.size())
-        
+        enc_pooled2 = self.pooler(enc_state2.transpose(2,0)).transpose(2,0)
+        mb_pooled2 = self.pooler(memory_bank2.transpose(2,0)).transpose(2,0)
 
-        #enc_state = (enc_state + enc_state2) / 2
-        #memory_bank =(memory_bank + memory_bank2) / 2
+        print('1 batch...')
+        print(enc_state.size())
+        print(enc_state2.size())
+        print(enc_pooled2.size())
+        print(mb_pooled2.size())
+        print(lengths.size())
+        
+        enc_out=torch.cat([enc_state,enc_pooled2])
+        mb_out=torch.cat([memory_bank,mb_pooled2])
+        print(enc_out.size())
 
 
         if bptt is False:
-            self.decoder.init_state(src, memory_bank, enc_state)
-        dec_out, attns = self.decoder(dec_in, memory_bank,
+            self.decoder.init_state(src, mb_out, enc_out)
+        dec_out, attns = self.decoder(dec_in, mb_out,
                                       memory_lengths=lengths,
                                       with_align=with_align)
         return dec_out, attns

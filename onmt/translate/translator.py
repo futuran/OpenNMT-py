@@ -560,17 +560,22 @@ class Translator(object):
         sim, sim_lengths = batch.sim if isinstance(batch.sim, tuple) \
                            else (batch.sim, None)
 
-        enc_states, memory_bank, src_lengths = self.model.encoder(src, src_lengths)
-        enc_states2, memory_bank2, sim_lengths = self.model.encoder(sim, sim_lengths)
+        enc_state, memory_bank, src_lengths = self.model.encoder(src, src_lengths)
+        enc_state2, memory_bank2, sim_lengths = self.model.encoder2(sim, sim_lengths)
+        enc_pooled2 = self.model.pooler(enc_state2.transpose(2,0)).transpose(2,0)
+        mb_pooled2 = self.model.pooler(memory_bank2.transpose(2,0)).transpose(2,0)
+
+        enc_out=torch.cat([enc_state,enc_pooled2])
+        mb_out=torch.cat([memory_bank,mb_pooled2])
 
         if src_lengths is None:
-            assert not isinstance(memory_bank, tuple), \
+            assert not isinstance(mb_out, tuple), \
                 'Ensemble decoding only supported for text data'
             src_lengths = torch.Tensor(batch.batch_size) \
-                               .type_as(memory_bank) \
+                               .type_as(mb_out) \
                                .long() \
-                               .fill_(memory_bank.size(0))
-        return src, enc_states, memory_bank, src_lengths
+                               .fill_(mb_out.size(0))
+        return src, enc_out, mb_out, src_lengths
 
 
 
@@ -660,6 +665,7 @@ class Translator(object):
         # (1) Run the encoder on the src.
         src, enc_states, memory_bank, src_lengths = self._run_encoder(batch)
         print(batch)
+        print(src.size())
         self.model.decoder.init_state(src, memory_bank, enc_states)
 
         results = {
