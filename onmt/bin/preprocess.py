@@ -48,7 +48,6 @@ def process_one_shard(corpus_params, params):
     i, (src_shard, sim_shard, tgt_shard, align_shard, maybe_id, filter_pred) = params
     # create one counter per shard
     sub_sub_counter = defaultdict(Counter)
-    print(f'{sub_sub_counter=}')
     assert len(src_shard) == len(tgt_shard)
     logger.info("Building shard %d." % i)
 
