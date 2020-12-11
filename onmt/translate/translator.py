@@ -555,10 +555,17 @@ class Translator(object):
     
     #20121206 tmr add sim
     def _run_encoder(self, batch):
+        print("batch....")
         src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                            else (batch.src, None)
         sim, sim_lengths = batch.sim if isinstance(batch.sim, tuple) \
                            else (batch.sim, None)
+
+        sim_pooled = torch.zeros(10,src.size()[1],1,dtype=src.dtype, device=src.device)
+        print(src.device)
+        print(sim_pooled.device)
+        print(sim_pooled.size())
+        src_out=torch.cat([src,sim_pooled])
 
         enc_state, memory_bank, src_lengths = self.model.encoder(src, src_lengths)
         enc_state2, memory_bank2, sim_lengths = self.model.encoder2(sim, sim_lengths)
@@ -575,7 +582,7 @@ class Translator(object):
                                .type_as(mb_out) \
                                .long() \
                                .fill_(mb_out.size(0))
-        return src, enc_out, mb_out, src_lengths
+        return src_out, enc_out, mb_out, src_lengths
 
 
 
