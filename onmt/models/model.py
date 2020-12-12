@@ -17,6 +17,7 @@ class NMTModel(nn.Module):
         super(NMTModel, self).__init__()
         self.encoder = encoder
         self.encoder2 = encoder2
+        self.sim_weight = torch.eye(512,requires_grad=True)
         #self.weight = torch.autograd.Variable(xxxxx)
         self.pooler = nn.AdaptiveAvgPool1d(10)
         self.decoder = decoder
@@ -46,29 +47,29 @@ class NMTModel(nn.Module):
         """
         dec_in = tgt[:-1]  # exclude last target from inputs
 
-        enc_state, memory_bank, lengths = self.encoder(src, src_lengths)
+        src_enc_out, src_memory_bank, src_lens = self.encoder(src, src_lengths)
+        sim_enc_out, sim_memory_bank, sim_lens = self.encoder2(sim, sim_lengths)
 
-        enc_state2, memory_bank2, lengths2 = self.encoder(sim, sim_lengths)
-        enc_pooled2 = self.pooler(enc_state2.transpose(2,0)).transpose(2,0)
-        mb_pooled2 = self.pooler(memory_bank2.transpose(2,0)).transpose(2,0)
+        sim_pooled_enc = self.pooler(sim_enc_out.transpose(2,0)).transpose(2,0)
+        sim_pooled_mb  = self.pooler(sim_memory_bank.transpose(2,0)).transpose(2,0)
+        sim_lineared_enc = torch.bmm(sim_pooled_enc.transpose(0,1), self.sim_weight.expand(src.size()[1],512,512).to(src.device)).transpose(0,1)
+        sim_lineared_mb  = torch.bmm(sim_pooled_mb.transpose(0,1), self.sim_weight.expand(src.size()[1],512,512).to(src.device)).transpose(0,1)
 
-        print('1 batch...')
-        print(enc_state.size())
-        print(enc_state2.size())
-        print(enc_pooled2.size())
-        print(mb_pooled2.size())
-        print(lengths.size())
-        
-        enc_out=torch.cat([enc_state,enc_pooled2])
-        mb_out=torch.cat([memory_bank,mb_pooled2])
-        print(enc_out.size())
+        src_out=torch.cat([torch.zeros(10,src.size()[1],src.size()[2],dtype=src.dtype, device=src.device),src])
 
+        print(src_enc_out.size())
+        #print(sim_lineared_enc.size())
+
+        enc_out = torch.cat([src_enc_out,     sim_lineared_enc])
+        mb_out  = torch.cat([src_memory_bank, sim_lineared_mb])
+
+        #src_out=src
+        #enc_out=src_enc_out
+        #mb_out=src_memory_bank
 
         if bptt is False:
-            self.decoder.init_state(src, mb_out, enc_out)
-        dec_out, attns = self.decoder(dec_in, mb_out,
-                                      memory_lengths=lengths,
-                                      with_align=with_align)
+            self.decoder.init_state(src_out, mb_out, enc_out)
+        dec_out, attns = self.decoder(dec_in, mb_out, memory_lengths=src_lens, with_align=with_align)
         return dec_out, attns
 
     def update_dropout(self, dropout):

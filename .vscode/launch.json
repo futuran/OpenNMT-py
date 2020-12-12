@@ -12,8 +12,8 @@
             "program": "${file}",
             "console": "integratedTerminal",
             //"args": ["-config", "/home/futuran/work/OpenNMT-py/multimodal/preprocess.conf"],
-            //"args": ["-config", "/home/futuran/work/OpenNMT-py/multimodal/train.conf"],
-            "args": ["-config", "/home/futuran/work/OpenNMT-py/multimodal/translate.conf"],
+            "args": ["-config", "/home/futuran/work/OpenNMT-py/multimodal/train.conf"],
+            //"args": ["-config", "/home/futuran/work/OpenNMT-py/multimodal/translate.conf"],
             "justMyCode": false
         }
     ]

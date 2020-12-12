@@ -1,1 +1,1 @@
-perl /home/futuran/work/OpenNMT-py/tools/multi-bleu.perl dataset/data/task1/tok/test_2016_flickr.lc.norm.tok.fr < encs2fr/output.fr > out.bleu
+perl /home/futuran/work/OpenNMT-py/tools/multi-bleu.perl data/NFR_FlickrCOCO_multi/merge.0.00.restore/flickr_test.en1.tokenized.with_match.bpe.r < jaen2en/output.en.r > out.bleu

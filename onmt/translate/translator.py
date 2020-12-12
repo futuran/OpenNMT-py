@@ -562,9 +562,9 @@ class Translator(object):
                            else (batch.sim, None)
 
         sim_pooled = torch.zeros(10,src.size()[1],1,dtype=src.dtype, device=src.device)
-        print(src.device)
-        print(sim_pooled.device)
-        print(sim_pooled.size())
+        #print(src.device)
+        #print(sim_pooled.device)
+        #print(sim_pooled.size())
         src_out=torch.cat([src,sim_pooled])
 
         enc_state, memory_bank, src_lengths = self.model.encoder(src, src_lengths)
