@@ -561,19 +561,21 @@ class Translator(object):
         sim, sim_lengths = batch.sim if isinstance(batch.sim, tuple) \
                            else (batch.sim, None)
 
-        sim_pooled = torch.zeros(10,src.size()[1],1,dtype=src.dtype, device=src.device)
-        #print(src.device)
-        #print(sim_pooled.device)
-        #print(sim_pooled.size())
-        src_out=torch.cat([src,sim_pooled])
+        src_enc_out, src_memory_bank, src_lens = self.model.encoder(src, src_lengths)
+        sim_enc_out, sim_memory_bank, sim_lens = self.model.encoder2(sim, sim_lengths)
 
-        enc_state, memory_bank, src_lengths = self.model.encoder(src, src_lengths)
-        enc_state2, memory_bank2, sim_lengths = self.model.encoder2(sim, sim_lengths)
-        enc_pooled2 = self.model.pooler(enc_state2.transpose(2,0)).transpose(2,0)
-        mb_pooled2 = self.model.pooler(memory_bank2.transpose(2,0)).transpose(2,0)
+        sim_pooled_enc = self.model.pooler(sim_enc_out.transpose(2,0)).transpose(2,0)
+        sim_pooled_mb  = self.model.pooler(sim_memory_bank.transpose(2,0)).transpose(2,0)
+        sim_lineared_enc = torch.bmm(sim_pooled_enc.transpose(0,1), self.model.sim_weight.expand(src.size()[1],512,512).to(src.device)).transpose(0,1)
+        sim_lineared_mb  = torch.bmm(sim_pooled_mb.transpose(0,1), self.model.sim_weight.expand(src.size()[1],512,512).to(src.device)).transpose(0,1)
 
-        enc_out=torch.cat([enc_state,enc_pooled2])
-        mb_out=torch.cat([memory_bank,mb_pooled2])
+        src_out=torch.cat([torch.zeros(10,src.size()[1],src.size()[2],dtype=src.dtype, device=src.device),src])
+
+        print(src_enc_out.size())
+        #print(sim_lineared_enc.size())
+
+        enc_out = torch.cat([src_enc_out,     sim_lineared_enc])
+        mb_out  = torch.cat([src_memory_bank, sim_lineared_mb])
 
         if src_lengths is None:
             assert not isinstance(mb_out, tuple), \
