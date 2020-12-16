@@ -261,6 +261,7 @@ def preprocess(opt):
 
     logger.info("Building `Fields` object...")
     #tmr20201129 add sim
+    # fields is dict
     fields = inputters.get_fields(
         opt.data_type,
         src_nfeats,

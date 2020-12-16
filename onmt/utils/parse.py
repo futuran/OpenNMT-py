@@ -31,6 +31,7 @@ class ArgumentParser(cfargparse.ArgumentParser):
     def update_model_opts(cls, model_opt):
         if model_opt.word_vec_size > 0:
             model_opt.src_word_vec_size = model_opt.word_vec_size
+            model_opt.sim_word_vec_size = model_opt.word_vec_size   #20201216 tmr add sim
             model_opt.tgt_word_vec_size = model_opt.word_vec_size
 
         if model_opt.layers > 0:

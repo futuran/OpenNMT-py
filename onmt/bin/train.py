@@ -129,6 +129,8 @@ def batch_producer(generator_to_serve, queues, semaphore, opt):
             if hasattr(b, 'alignment') else None
         b.src_map = b.src_map.to(torch.device(device_id)) \
             if hasattr(b, 'src_map') else None
+        b.sim_map = b.sim_map.to(torch.device(device_id)) \
+            if hasattr(b, 'sim_map') else None                  #20201216 tmr add sim, but not sure if this sentence will use
         b.align = b.align.to(torch.device(device_id)) \
             if hasattr(b, 'align') else None
         b.corpus_id = b.corpus_id.to(torch.device(device_id)) \
