@@ -564,23 +564,24 @@ class Translator(object):
         src_enc_out, src_memory_bank, src_lens = self.model.encoder(src, src_lengths)
         sim_enc_out, sim_memory_bank, sim_lens = self.model.encoder2(sim, sim_lengths)
 
-        #sim_pooled_enc = self.model.pooler(sim_enc_out.transpose(2,0)).transpose(2,0)
-        #sim_pooled_mb  = self.model.pooler(sim_memory_bank.transpose(2,0)).transpose(2,0)
-        #sim_lineared_enc = torch.bmm(sim_pooled_enc.transpose(0,1), self.model.sim_weight.expand(src.size()[1],512,512).to(src.device)).transpose(0,1)
-        #sim_lineared_mb  = torch.bmm(sim_pooled_mb.transpose(0,1), self.model.sim_weight.expand(src.size()[1],512,512).to(src.device)).transpose(0,1)
+        sim_pooled_enc = self.model.pooler(sim_enc_out.transpose(2,0)).transpose(2,0)
+        sim_pooled_mb  = self.model.pooler(sim_memory_bank.transpose(2,0)).transpose(2,0)
 
-        #src_out=torch.cat([torch.zeros(10,src.size()[1],src.size()[2],dtype=src.dtype, device=src.device),src])
+        sim_pre_enc = sim_pooled_enc.transpose(0,1).reshape(src.size()[1],self.model.poolsize*512)
+        sim_pre_mb  = sim_pooled_mb.transpose(0,1).reshape(src.size()[1],self.model.poolsize*512)
 
-        #print(src_enc_out.size())
-        #print(sim_lineared_enc.size())
+        sim_lineared_enc = self.model.linear(sim_pre_enc).reshape(src.size()[1],self.model.poolsize,512).transpose(0,1)
+        sim_lineared_mb  = self.model.linear(sim_pre_mb ).reshape(src.size()[1],self.model.poolsize,512).transpose(0,1)
 
-    
-        #enc_out = torch.cat([sim_enc_out,     src_lineared_enc])
-        #mb_out  = torch.cat([sim_memory_bank, src_lineared_mb])
+        src_out=torch.cat([torch.zeros(self.model.poolsize, \
+            src.size()[1],
+            src.size()[2],
+            dtype=src.dtype, 
+            device=src.device),
+            src])
+        enc_out = torch.cat([sim_lineared_enc, src_enc_out])
+        mb_out  = torch.cat([sim_lineared_mb,  src_memory_bank])
 
-        src_out = torch.cat([sim,               src])
-        enc_out = torch.cat([sim_enc_out,       src_enc_out])
-        mb_out  = torch.cat([sim_memory_bank,   src_memory_bank])
 
         if src_lengths is None:
             assert not isinstance(mb_out, tuple), \
@@ -589,7 +590,7 @@ class Translator(object):
                                .type_as(mb_out) \
                                .long() \
                                .fill_(mb_out.size(0))
-        return src_out, enc_out, mb_out, (sim.size()[0] + src_lens)
+        return src_out, enc_out, mb_out, (src_lens + self.model.poolsize)
 
 
 
