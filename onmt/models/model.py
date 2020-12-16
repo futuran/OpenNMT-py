@@ -19,7 +19,7 @@ class NMTModel(nn.Module):
         self.encoder2 = encoder2
         #self.sim_weight = torch.eye(512,requires_grad=True)
         #self.weight = torch.autograd.Variable(torch.Tensor([1]),requires_grad=True)
-        #self.pooler = nn.AdaptiveAvgPool1d(10)
+        self.pooler = nn.AdaptiveAvgPool1d(10)
         self.decoder = decoder
 
         #print("model initialized!!")
@@ -59,8 +59,8 @@ class NMTModel(nn.Module):
 
 
 
-        #sim_pooled_enc = self.pooler(sim_enc_out.transpose(2,0)).transpose(2,0)
-        #sim_pooled_mb  = self.pooler(sim_memory_bank.transpose(2,0)).transpose(2,0)
+        sim_pooled_enc = self.pooler(sim_enc_out.transpose(2,0)).transpose(2,0)
+        sim_pooled_mb  = self.pooler(sim_memory_bank.transpose(2,0)).transpose(2,0)
         
 
         #print(self.sim_weight.device)
@@ -71,7 +71,7 @@ class NMTModel(nn.Module):
         #sim_lineared_enc = torch.bmm(sim_pooled_enc.transpose(0,1), self.sim_weight.expand(src.size()[1],512,512).to(src.device)).transpose(0,1)
         #sim_lineared_mb  = torch.bmm(sim_pooled_mb.transpose(0,1), self.sim_weight.expand(src.size()[1],512,512).to(src.device)).transpose(0,1)
 
-        #src_out=torch.cat([torch.zeros(10,src.size()[1],src.size()[2],dtype=src.dtype, device=src.device),src])
+        src_out=torch.cat([torch.zeros(10,src.size()[1],src.size()[2],dtype=src.dtype, device=src.device),src])
 
         #print(src_enc_out.size())
         #print(sim_lineared_enc.size())
@@ -81,16 +81,16 @@ class NMTModel(nn.Module):
         #mb_out  = torch.cat([sim_lineared_mb,  src_memory_bank])
 
 
-        src_out = torch.cat([sim,               src])
-        enc_out = torch.cat([sim_enc_out,       src_enc_out])
-        mb_out  = torch.cat([sim_memory_bank,   src_memory_bank])
+        #src_out = torch.cat([sim,               src])
+        enc_out = torch.cat([sim_pooled_enc,  src_enc_out])
+        mb_out  = torch.cat([sim_pooled_mb,   src_memory_bank])
 
 
         #print(src_out.size())
 
         if bptt is False:
             self.decoder.init_state(src_out, mb_out, enc_out)
-        dec_out, attns = self.decoder(dec_in, mb_out, memory_lengths=(sim.size()[0] + src_lens), with_align=with_align)
+        dec_out, attns = self.decoder(dec_in, mb_out, memory_lengths=(src_lens+10), with_align=with_align)
         return dec_out, attns
 
     def update_dropout(self, dropout):
