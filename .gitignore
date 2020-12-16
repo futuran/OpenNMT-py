@@ -112,5 +112,4 @@ ENV/
 runs/
 
 # 20201205 futuran
-multimodal/dataset/
-multimodal/data/
+multimodal/

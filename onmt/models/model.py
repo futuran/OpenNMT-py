@@ -59,8 +59,8 @@ class NMTModel(nn.Module):
 
 
 
-        sim_pooled_enc = self.pooler(sim_enc_out.transpose(2,0)).transpose(2,0)
-        sim_pooled_mb  = self.pooler(sim_memory_bank.transpose(2,0)).transpose(2,0)
+        #sim_pooled_enc = self.pooler(sim_enc_out.transpose(2,0)).transpose(2,0)
+        #sim_pooled_mb  = self.pooler(sim_memory_bank.transpose(2,0)).transpose(2,0)
         
 
         #print(self.sim_weight.device)
@@ -90,7 +90,7 @@ class NMTModel(nn.Module):
 
         if bptt is False:
             self.decoder.init_state(src_out, mb_out, enc_out)
-        dec_out, attns = self.decoder(dec_in, mb_out, memory_lengths=(src_lens+sim_lens), with_align=with_align)
+        dec_out, attns = self.decoder(dec_in, mb_out, memory_lengths=(sim.size()[0] + src_lens), with_align=with_align)
         return dec_out, attns
 
     def update_dropout(self, dropout):
