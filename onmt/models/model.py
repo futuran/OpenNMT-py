@@ -27,7 +27,7 @@ class NMTModel(nn.Module):
 
         #print("model initialized!!")
 
-    def forward(self, src, sim, tgt, src_lengths, sim_lengths, bptt=False, with_align=False):
+    def forward(self, src, sim, exvec, coss, tgt, src_lengths, sim_lengths, bptt=False, with_align=False):
         """Forward propagate a `src` and `tgt` pair for training.
         Possible initialized with a beginning decoder state.
 
@@ -64,21 +64,27 @@ class NMTModel(nn.Module):
 
         #print(sim_pooled_enc.size())
 
-        sim_pre_enc = sim_pooled_enc.transpose(0,1).reshape(src.size()[1],self.poolsize*512)
-        sim_pre_mb  = sim_pooled_mb.transpose(0,1).reshape(src.size()[1],self.poolsize*512)
+        sim_pooled_enc2 = sim_pooled_enc * coss.reshape(1,src.size()[1],1).repeat(self.poolsize,1,512)
+        sim_pooled_mb2  =  sim_pooled_mb * coss.reshape(1,src.size()[1],1).repeat(self.poolsize,1,512)
+
+        #print(sim_pooled_enc2.size())
+
+        #sim_pre_enc = sim_pooled_enc2.transpose(0,1).reshape(src.size()[1],self.poolsize*512)
+        #sim_pre_mb  = sim_pooled_mb2.transpose(0,1).reshape(src.size()[1],self.poolsize*512)
 
         #print(sim_pre_enc.size())
 
-        sim_lineared_enc = self.linear(sim_pre_enc).reshape(src.size()[1],self.poolsize,512).transpose(0,1)
-        sim_lineared_mb  = self.linear(sim_pre_mb ).reshape(src.size()[1],self.poolsize,512).transpose(0,1)
+        #sim_lineared_enc = self.linear(sim_pre_enc).reshape(src.size()[1],self.poolsize,512).transpose(0,1)
+        #sim_lineared_mb  = self.linear(sim_pre_mb ).reshape(src.size()[1],self.poolsize,512).transpose(0,1)
+
+        sim_lineared_enc = sim_pooled_enc2
+        sim_lineared_mb  = sim_pooled_mb2
 
         #print(sim_lineared_enc.size())
 
         #print(self.sim_weight.device)
         #print(self.weight.device)
         #print(self.weight.grad)
-        #sim_lineared_enc = torch.div(sim_pooled_enc, self.weight)
-        #sim_lineared_mb  = torch.div(sim_pooled_mb,  self.weight)
         #sim_lineared_enc = torch.bmm(sim_pooled_enc.transpose(0,1), self.sim_weight.expand(src.size()[1],512,512).to(src.device)).transpose(0,1)
         #sim_lineared_mb  = torch.bmm(sim_pooled_mb.transpose(0,1), self.sim_weight.expand(src.size()[1],512,512).to(src.device)).transpose(0,1)
 

@@ -218,7 +218,9 @@ def preprocess_opts(parser):
     group.add('--train_src', '-train_src', required=True, nargs='+',
               help="Path(s) to the training source data")
     group.add('--train_sim', '-train_sim', required=True, nargs='+',
-              help="Path(s) to the training source data") #tmr20201129 add sim
+              help="Path(s) to the training source data")                            #20201129 tmr add sim
+    group.add('--train_exvec', '-train_exvec', required=True, nargs='+',
+              help="Path(s) to the training external vec data")                      #20201218 tmr add exvec
     group.add('--train_tgt', '-train_tgt', required=True, nargs='+',
               help="Path(s) to the training target data")
     group.add('--train_align', '-train_align', nargs='+', default=[None],
@@ -229,7 +231,9 @@ def preprocess_opts(parser):
     group.add('--valid_src', '-valid_src',
               help="Path to the validation source data")
     group.add('--valid_sim', '-valid_sim',
-              help="Path to the validation source data") #tmr20201129 add sim
+              help="Path to the validation source data")                             #20201129 tmr add sim
+    group.add('--valid_exvec', '-valid_exvec',
+              help="Path to the validation source data")                             #20201218 tmr add exvec
     group.add('--valid_tgt', '-valid_tgt',
               help="Path to the validation target data")
     group.add('--valid_align', '-valid_align', default=None,

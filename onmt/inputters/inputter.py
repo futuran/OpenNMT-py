@@ -103,6 +103,7 @@ def get_fields(
     src_data_type,
     n_src_feats,
     n_sim_feats,
+    n_exvec_feats,
     n_tgt_feats,
     pad='<blank>',
     bos='<s>',
@@ -164,9 +165,17 @@ def get_fields(
                         "pad": pad, "bos": None, "eos": None,
                         "truncate": sim_truncate,
                         "base_name": "sim"}
+
+    #20201220 tmr add exvec
+    exvec_field_kwargs = {"n_feats": n_exvec_feats,
+                        "include_lengths": True,
+                        "pad": pad, "bos": None, "eos": None,
+                        "truncate": sim_truncate,
+                        "base_name": "exvec"}
     
     fields["src"] = fields_getters[src_data_type](**src_field_kwargs)
-    fields["sim"] = fields_getters[src_data_type](**sim_field_kwargs) #tmr20201129 add sim
+    fields["sim"] = fields_getters[src_data_type](**sim_field_kwargs)               #20201129 tmr add sim
+    fields["exvec"] = fields_getters[src_data_type](**exvec_field_kwargs)           #20201218 tmr add external vector
     
     tgt_field_kwargs = {"n_feats": n_tgt_feats,
                         "include_lengths": False,
@@ -389,6 +398,8 @@ def _build_fields_vocab(fields, counters, data_type, share_vocab,
         max_size=src_vocab_size, min_freq=src_words_min_frequency)
     build_fv_args["sim"] = dict(
         max_size=sim_vocab_size, min_freq=sim_words_min_frequency)
+    build_fv_args["exvec"] = dict(
+        max_size=sim_vocab_size, min_freq=sim_words_min_frequency)  #20201220 tmr add exvec
     build_fv_args["tgt"] = dict(
         max_size=tgt_vocab_size, min_freq=tgt_words_min_frequency)
     tgt_multifield = fields["tgt"]
@@ -418,6 +429,15 @@ def _build_fields_vocab(fields, counters, data_type, share_vocab,
             build_fv_args,
             size_multiple=vocab_size_multiple if not share_vocab else 1)
         #end 20201206 tmr add sim
+
+        #20201220 tmr add exvec !!!DONT SHARE VOCAB!!!
+        exvec_multifield = fields["exvec"]
+        _build_fv_from_multifield(
+            exvec_multifield,
+            counters,
+            build_fv_args,
+            size_multiple=vocab_size_multiple if not False else 1)
+        #end 20201220 tmr add exvec
 
         if share_vocab:
             # `tgt_vocab_size` is ignored when sharing vocabularies

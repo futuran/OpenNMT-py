@@ -81,6 +81,9 @@ def main(opt, device_id, batch_queue=None, semaphore=None):
             if sf.use_vocab:
                 logger.info(' * %s vocab size = %d' % (sn, len(sf.vocab)))
 
+    # 20201220 tmr
+    # coss is dict of cos similarity
+    # coss = fields["exvec"].fields[0][1].vocab.itos
 
     # Build model.
     model = build_model(model_opt, opt, fields, checkpoint)
@@ -89,6 +92,7 @@ def main(opt, device_id, batch_queue=None, semaphore=None):
     logger.info('decoder: %d' % dec)
     logger.info('* number of parameters: %d' % n_params)
     _check_save_model_path(opt)
+
 
     # Build optimizer.
     optim = Optimizer.from_opt(model, opt, checkpoint=checkpoint)

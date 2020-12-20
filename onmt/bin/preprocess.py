@@ -44,18 +44,19 @@ def check_existing_pt_files(opt, corpus_type, ids, existing_fields):
 
 
 def process_one_shard(corpus_params, params):
-    corpus_type, fields, src_reader, tgt_reader, align_reader, opt, existing_fields, src_vocab, tgt_vocab = corpus_params
-    i, (src_shard, sim_shard, tgt_shard, align_shard, maybe_id, filter_pred) = params
+    corpus_type, fields, src_reader, exvec_reader, tgt_reader, align_reader, opt, existing_fields, src_vocab, tgt_vocab = corpus_params
+    i, (src_shard, sim_shard, exvec_shard, tgt_shard, align_shard, maybe_id, filter_pred) = params  #20201220 tmr add sim and exvec
     # create one counter per shard
     sub_sub_counter = defaultdict(Counter)
     assert len(src_shard) == len(tgt_shard)
     logger.info("Building shard %d." % i)
 
     src_data = {"reader": src_reader, "data": src_shard, "dir": opt.src_dir}
-    sim_data = {"reader": src_reader, "data": sim_shard, "dir": opt.src_dir} #20201129 tmr add sim
+    sim_data = {"reader": src_reader, "data": sim_shard, "dir": opt.src_dir}        #20201129 tmr add sim
+    exvec_data = {"reader": exvec_reader, "data": exvec_shard, "dir": opt.src_dir}  #20201220 tmr add exvec
     tgt_data = {"reader": tgt_reader, "data": tgt_shard, "dir": None}
     align_data = {"reader": align_reader, "data": align_shard, "dir": None}
-    _readers, _data, _dir = inputters.Dataset.config([('src', src_data), ('sim', sim_data), ('tgt', tgt_data), ('align', align_data)]) #20201129 tmr add sim
+    _readers, _data, _dir = inputters.Dataset.config([('src', src_data), ('sim', sim_data), ('exvec', exvec_data), ('tgt', tgt_data), ('align', align_data)]) #20201129 tmr add sim
 
     dataset = inputters.Dataset(
         fields, readers=_readers, data=_data, dirs=_dir,
@@ -126,20 +127,22 @@ def maybe_load_vocab(corpus_type, counters, opt):
     return src_vocab, tgt_vocab, existing_fields
 
 
-def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, align_reader, opt):
+def build_save_dataset(corpus_type, fields, src_reader, exvec_reader, tgt_reader, align_reader, opt):
     assert corpus_type in ['train', 'valid']
 
     if corpus_type == 'train':
         counters = defaultdict(Counter)
         srcs = opt.train_src
-        sims = opt.train_sim #tmr20201129 add sim
+        sims = opt.train_sim        #20201129 tmr add sim
+        exvecs = opt.train_exvec    #20201220 tmr add exvec
         tgts = opt.train_tgt
         ids = opt.train_ids
         aligns = opt.train_align
     elif corpus_type == 'valid':
         counters = None
         srcs = [opt.valid_src]
-        sims = [opt.valid_sim] #tmr20201129 add sim
+        sims = [opt.valid_sim]        #20201129 tmr add sim
+        exvecs = [opt.valid_exvec]    #20201220 tmr add exvec
         tgts = [opt.valid_tgt]
         ids = [None]
         aligns = [opt.valid_align]
@@ -153,11 +156,11 @@ def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, align_reader
         return
 
     #tmr20201129 add sim
-    def shard_iterator(srcs, sims, tgts, ids, aligns, existing_shards, existing_fields, corpus_type, opt):
+    def shard_iterator(srcs, sims, exvecs, tgts, ids, aligns, existing_shards, existing_fields, corpus_type, opt):
         """
         Builds a single iterator yielding every shard of every corpus.
         """
-        for src, sim, tgt, maybe_id, maybe_align in zip(srcs, sims, tgts, ids, aligns):
+        for src, sim, exvec, tgt, maybe_id, maybe_align in zip(srcs, sims, exvecs, tgts, ids, aligns):
             if maybe_id in existing_shards:
                 if opt.overwrite:
                     logger.warning("Overwrite shards for corpus {}".format(maybe_id))
@@ -180,18 +183,19 @@ def build_save_dataset(corpus_type, fields, src_reader, tgt_reader, align_reader
             else:
                 filter_pred = None
             src_shards = split_corpus(src, opt.shard_size)
-            sim_shards = split_corpus(sim, opt.shard_size) #tmr20201129 add sim
+            sim_shards = split_corpus(sim, opt.shard_size)      #20201129 tmr add sim
+            exvec_shards = split_corpus(exvec, opt.shard_size)  #20201220 tmr add exvec
             tgt_shards = split_corpus(tgt, opt.shard_size)
             align_shards = split_corpus(maybe_align, opt.shard_size)
             #tmr20201129 add sim
-            for i, (ss, s2s, ts, a_s) in enumerate(
-                    zip(src_shards, sim_shards, tgt_shards, align_shards)):
-                yield (i, (ss, s2s, ts, a_s, maybe_id, filter_pred))
+            for i, (ss, s2s, vs, ts, a_s) in enumerate(
+                    zip(src_shards, sim_shards, exvec_shards, tgt_shards, align_shards)):
+                yield (i, (ss, s2s, vs, ts, a_s, maybe_id, filter_pred))
 
-    shard_iter = shard_iterator(srcs, sims, tgts, ids, aligns, existing_shards, existing_fields, corpus_type, opt)
+    shard_iter = shard_iterator(srcs, sims, exvecs, tgts, ids, aligns, existing_shards, existing_fields, corpus_type, opt)
 
     with Pool(opt.num_threads) as p:
-        dataset_params = (corpus_type, fields, src_reader, tgt_reader,
+        dataset_params = (corpus_type, fields, src_reader, exvec_reader, tgt_reader,
                           align_reader, opt, existing_fields,
                           src_vocab, tgt_vocab)
         func = partial(process_one_shard, dataset_params)
@@ -247,16 +251,20 @@ def preprocess(opt):
     logger.info("Extracting features...")
 
     src_nfeats = 0
-    sim_nfeats = 0 #tmr20201129 add sim
+    sim_nfeats = 0      #20201129 tmr add sim
+    exvec_nfeats = 0    #20202020 tmr add exvec
     tgt_nfeats = 0
-    for src, sim, tgt in zip(opt.train_src,opt.train_sim, opt.train_tgt):
+    for src, sim, exvec, tgt in zip(opt.train_src,opt.train_sim,opt.train_exvec, opt.train_tgt):
         src_nfeats += count_features(src) if opt.data_type == 'text' \
             else 0
         sim_nfeats += count_features(sim) if opt.data_type == 'text' \
             else 0
+        exvec_nfeats += count_features(exvec) if opt.data_type == 'text' \
+            else 0
         tgt_nfeats += count_features(tgt)  # tgt always text so far
     logger.info(" * number of source features: %d." % src_nfeats)
-    logger.info(" * number of source2(sim) features: %d." % sim_nfeats) #tmr20201129 add sim
+    logger.info(" * number of source2(sim) features: %d." % sim_nfeats)         #20201129 tmr add sim
+    logger.info(" * number of exvec features: %d." % exvec_nfeats)              #20202020 tmr add exvec
     logger.info(" * number of target features: %d." % tgt_nfeats)
 
     logger.info("Building `Fields` object...")
@@ -266,6 +274,7 @@ def preprocess(opt):
         opt.data_type,
         src_nfeats,
         sim_nfeats,
+        exvec_nfeats,
         tgt_nfeats,
         dynamic_dict=opt.dynamic_dict,
         with_align=opt.train_align[0] is not None,
@@ -274,16 +283,17 @@ def preprocess(opt):
         tgt_truncate=opt.tgt_seq_length_trunc)
 
 
+    exvec_reader = inputters.str2reader["text"].from_opt(opt)    #20201218 tmr add external vector
     src_reader = inputters.str2reader[opt.data_type].from_opt(opt)
     tgt_reader = inputters.str2reader["text"].from_opt(opt)
     align_reader = inputters.str2reader["text"].from_opt(opt)
 
     logger.info("Building & saving training data...")
-    build_save_dataset('train', fields, src_reader, tgt_reader, align_reader, opt)
+    build_save_dataset('train', fields, src_reader, exvec_reader, tgt_reader, align_reader, opt)
 
     if opt.valid_src and opt.valid_tgt:
         logger.info("Building & saving validation data...")
-        build_save_dataset('valid', fields, src_reader, tgt_reader, align_reader, opt)
+        build_save_dataset('valid', fields, src_reader, exvec_reader, tgt_reader, align_reader, opt)
 
 
 def _get_parser():

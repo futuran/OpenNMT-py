@@ -259,8 +259,24 @@ class Trainer(object):
         report_stats = onmt.utils.Statistics()
         self._start_report_manager(start_time=total_stats.start_time)
 
-        for i, (batches, normalization) in enumerate(
-                self._accum_batches(train_iter)):
+        # 20201220 tmr add
+        # coss_vocab is dict of cos similarity
+        coss_vocab = train_iter.fields["exvec"].fields[0][1].vocab.itos
+        coss_vocab[0] = "0"
+        coss_vocab[1] = "1"
+        coss_vocab = [float(cos.strip()) for cos in coss_vocab]
+        #print(coss_vocab)
+
+        for i, (batches, normalization) in enumerate(self._accum_batches(train_iter)):
+
+            coss_no = batches[0].exvec[0].reshape(-1).tolist()
+            coss=[]
+            #print(batches[0].batch_size)
+            for i in range(batches[0].batch_size):
+                coss.append(coss_vocab[coss_no[i]])
+            coss = torch.tensor(coss,device="cuda")
+            #print(coss)
+
             step = self.optim.training_step
             # UPDATE DROPOUT
             self._maybe_update_dropout(step)
@@ -278,7 +294,7 @@ class Trainer(object):
                                     (normalization))
 
             self._gradient_accumulation(
-                batches, normalization, total_stats,
+                batches,coss, normalization, total_stats,
                 report_stats)
 
             if self.average_decay > 0 and i % self.average_every == 0:
@@ -294,7 +310,7 @@ class Trainer(object):
                     logger.info('GpuRank %d: validate step %d'
                                 % (self.gpu_rank, step))
                 valid_stats = self.validate(
-                    valid_iter, moving_average=self.moving_average)
+                    valid_iter,moving_average=self.moving_average)        #20201220 tmr add exvec
                 if self.gpu_verbose_level > 0:
                     logger.info('GpuRank %d: gather valid stat \
                                 step %d' % (self.gpu_rank, step))
@@ -347,16 +363,28 @@ class Trainer(object):
             stats = onmt.utils.Statistics()
 
             for batch in valid_iter:
+                #coss_no = batch.exvec[0].reshape(-1).tolist()
+                #coss=[]
+                #print(batch.batch_size)
+                #for i in range(batch.batch_size):
+                #    coss.append(coss_vocab[coss_no[i]])
+                #coss = torch.tensor(coss,device="cuda")
+                #print(coss)
+                coss = torch.ones(batch.batch_size,device="cuda")
+
                 src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                                    else (batch.src, None)
                 #20201206 tmr add sim
                 sim, sim_lengths = batch.sim if isinstance(batch.sim, tuple) \
                                    else (batch.sim, None)
+                #20201220 tmr add exvec
+                exvec, exvec_lengths = batch.exvec if isinstance(batch.exvec, tuple) \
+                                   else (batch.exvec, None)
                 tgt = batch.tgt
 
                 #20201206 tmr add sim
                 # F-prop through the model.
-                outputs, attns = valid_model(src, sim, tgt, src_lengths,sim_lengths,
+                outputs, attns = valid_model(src, sim, exvec, coss, tgt, src_lengths,sim_lengths,
                                              with_align=self.with_align)
 
                 # Compute loss.
@@ -374,7 +402,7 @@ class Trainer(object):
 
         return stats
 
-    def _gradient_accumulation(self, true_batches, normalization, total_stats,
+    def _gradient_accumulation(self, true_batches, coss, normalization, total_stats,
                                report_stats):
         if self.accum_count > 1:
             self.optim.zero_grad()
@@ -400,6 +428,10 @@ class Trainer(object):
             if sim_lengths is not None:
                 report_stats.n_src_words += sim_lengths.sum().item()    #!!!!20201206 add n_src_words, is it okay?
 
+            #20201206 tmr add sim
+            exvec, exvec_lengths = batch.exvec if isinstance(batch.exvec, tuple) \
+                else (batch.exvec, None)
+
 
             tgt_outer = batch.tgt
 
@@ -413,7 +445,7 @@ class Trainer(object):
                     self.optim.zero_grad()
 
                 #20201206 tmr add sim
-                outputs, attns = self.model(src,sim, tgt, src_lengths, sim_lengths, bptt=bptt,
+                outputs, attns = self.model(src,sim,exvec,coss, tgt, src_lengths, sim_lengths, bptt=bptt,
                                             with_align=self.with_align)
                 bptt = True
 
