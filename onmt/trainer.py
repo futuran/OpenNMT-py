@@ -365,7 +365,7 @@ class Trainer(object):
             for batch in valid_iter:
                 coss_no = batch.exvec[0].reshape(-1).tolist()
                 coss=[]
-                print(batch.batch_size)
+                #print(batch.batch_size)
                 for i in range(batch.batch_size):
                     coss.append(coss_vocab[coss_no[i]])
                 coss = torch.tensor(coss,device="cuda")
