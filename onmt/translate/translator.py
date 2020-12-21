@@ -369,11 +369,17 @@ class Translator(object):
 
         for batch in data_iter:
 
-            
+            coss_no = batch.exvec[0].reshape(-1).tolist()
+            coss=[]
+            #print(batch.batch_size)
+            for i in range(batch.batch_size):
+                coss.append(coss_vocab[coss_no[i]])
+            coss = torch.tensor(coss,device="cuda")
+            #print(coss)
 
 
 
-            batch_data = self.translate_batch(batch, data.src_vocabs, data.sim_vocabs, attn_debug)
+            batch_data = self.translate_batch(batch, data.src_vocabs, data.sim_vocabs,coss, attn_debug)
             translations = xlation_builder.from_batch(batch_data)
 
             for trans in translations:
@@ -534,7 +540,7 @@ class Translator(object):
             alignment_attn, prediction_mask, src_lengths, n_best)
         return alignement
 
-    def translate_batch(self, batch, src_vocabs, sim_vocabs, attn_debug):
+    def translate_batch(self, batch, src_vocabs, sim_vocabs,coss, attn_debug):  #20201221 tmr add coss
         """Translate a batch of sentences."""
         with torch.no_grad():
             if self.beam_size == 1:
@@ -566,10 +572,10 @@ class Translator(object):
                     exclusion_tokens=self._exclusion_idxs,
                     stepwise_penalty=self.stepwise_penalty,
                     ratio=self.ratio)
-            return self._translate_batch_with_strategy(batch, src_vocabs, sim_vocabs, decode_strategy)
+            return self._translate_batch_with_strategy(batch, src_vocabs, sim_vocabs,coss, decode_strategy)
     
     #20121206 tmr add sim
-    def _run_encoder(self, batch):
+    def _run_encoder(self, batch,coss):
         print("batch....")
         src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                            else (batch.src, None)
@@ -582,11 +588,17 @@ class Translator(object):
         sim_pooled_enc = self.model.pooler(sim_enc_out.transpose(2,0)).transpose(2,0)
         sim_pooled_mb  = self.model.pooler(sim_memory_bank.transpose(2,0)).transpose(2,0)
 
-        sim_pre_enc = sim_pooled_enc.transpose(0,1).reshape(src.size()[1],self.model.poolsize*512)
-        sim_pre_mb  = sim_pooled_mb.transpose(0,1).reshape(src.size()[1],self.model.poolsize*512)
+        sim_pooled_enc2 = sim_pooled_enc * coss.reshape(1,src.size()[1],1).repeat(self.model.poolsize,1,512)
+        sim_pooled_mb2  =  sim_pooled_mb * coss.reshape(1,src.size()[1],1).repeat(self.model.poolsize,1,512)
 
-        sim_lineared_enc = self.model.linear(sim_pre_enc).reshape(src.size()[1],self.model.poolsize,512).transpose(0,1)
-        sim_lineared_mb  = self.model.linear(sim_pre_mb ).reshape(src.size()[1],self.model.poolsize,512).transpose(0,1)
+        #sim_pre_enc = sim_pooled_enc.transpose(0,1).reshape(src.size()[1],self.model.poolsize*512)
+        #sim_pre_mb  = sim_pooled_mb.transpose(0,1).reshape(src.size()[1],self.model.poolsize*512)
+
+        #sim_lineared_enc = self.model.linear(sim_pre_enc).reshape(src.size()[1],self.model.poolsize,512).transpose(0,1)
+        #sim_lineared_mb  = self.model.linear(sim_pre_mb ).reshape(src.size()[1],self.model.poolsize,512).transpose(0,1)
+
+        sim_lineared_enc = sim_pooled_enc2
+        sim_lineared_mb  = sim_pooled_mb2
 
         src_out=torch.cat([torch.zeros(self.model.poolsize, \
             src.size()[1],
@@ -675,6 +687,7 @@ class Translator(object):
             batch,
             src_vocabs,
             sim_vocabs, #20201209 tmr add sim
+            coss,
             decode_strategy):
         """Translate a batch of sentences step by step using cache.
 
@@ -693,7 +706,7 @@ class Translator(object):
         batch_size = batch.batch_size
 
         # (1) Run the encoder on the src.
-        src, enc_states, memory_bank, src_lengths = self._run_encoder(batch)
+        src, enc_states, memory_bank, src_lengths = self._run_encoder(batch,coss)
         print(batch)
         print(src.size())
         self.model.decoder.init_state(src, memory_bank, enc_states)
