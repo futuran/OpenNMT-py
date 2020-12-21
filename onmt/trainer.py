@@ -310,7 +310,7 @@ class Trainer(object):
                     logger.info('GpuRank %d: validate step %d'
                                 % (self.gpu_rank, step))
                 valid_stats = self.validate(
-                    valid_iter,moving_average=self.moving_average)        #20201220 tmr add exvec
+                    valid_iter,coss_vocab, moving_average=self.moving_average)        #20201220 tmr add exvec
                 if self.gpu_verbose_level > 0:
                     logger.info('GpuRank %d: gather valid stat \
                                 step %d' % (self.gpu_rank, step))
@@ -339,7 +339,7 @@ class Trainer(object):
             self.model_saver.save(step, moving_average=self.moving_average)
         return total_stats
 
-    def validate(self, valid_iter, moving_average=None):
+    def validate(self, valid_iter,coss_vocab, moving_average=None):
         """ Validate model.
             valid_iter: validate data iterator
         Returns:
@@ -363,14 +363,14 @@ class Trainer(object):
             stats = onmt.utils.Statistics()
 
             for batch in valid_iter:
-                #coss_no = batch.exvec[0].reshape(-1).tolist()
-                #coss=[]
-                #print(batch.batch_size)
-                #for i in range(batch.batch_size):
-                #    coss.append(coss_vocab[coss_no[i]])
-                #coss = torch.tensor(coss,device="cuda")
+                coss_no = batch.exvec[0].reshape(-1).tolist()
+                coss=[]
+                print(batch.batch_size)
+                for i in range(batch.batch_size):
+                    coss.append(coss_vocab[coss_no[i]])
+                coss = torch.tensor(coss,device="cuda")
                 #print(coss)
-                coss = torch.ones(batch.batch_size,device="cuda")
+                #coss = torch.ones(batch.batch_size,device="cuda")
 
                 src, src_lengths = batch.src if isinstance(batch.src, tuple) \
                                    else (batch.src, None)

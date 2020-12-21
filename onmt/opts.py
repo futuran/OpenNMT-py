@@ -668,6 +668,9 @@ def translate_opts(parser):
     group.add('--sim', '-sim', required=True,
               help="Source2(sim) sequence to decode (one line per "   #20201206 tmr add sim
                    "sequence)")
+    group.add('--exvec', '-exvec', required=True,
+              help="External Vector sequence to decode (one line per "   #20201221 tmr add exvec
+                   "sequence)")
     group.add('--src_dir', '-src_dir', default="",
               help='Source directory for image or audio files')
     group.add('--sim_dir', '-sim_dir', default="",

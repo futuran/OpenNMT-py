@@ -285,7 +285,8 @@ class Translator(object):
     def translate(
             self,
             src,
-            sim,    #20201206 tmr add
+            sim,    #20201206 tmr add exvec
+            exvec,  #20201221 tmr add exvec
             tgt=None,
             src_dir=None,
             sim_dir=None,    #20201206 tmr add
@@ -318,9 +319,10 @@ class Translator(object):
 
         src_data = {"reader": self.src_reader, "data": src, "dir": src_dir}
         sim_data = {"reader": self.src_reader, "data": sim, "dir": sim_dir}    #20201206 tmr add
+        exvec_data = {"reader": self.src_reader, "data": exvec, "dir": sim_dir}    #20201206 tmr add
         tgt_data = {"reader": self.tgt_reader, "data": tgt, "dir": None}
         _readers, _data, _dir = inputters.Dataset.config(
-            [('src', src_data), ('sim', sim_data), ('tgt', tgt_data)])    #20201206 tmr add
+            [('src', src_data), ('sim', sim_data), ('exvec', exvec_data), ('tgt', tgt_data)])    #20201206 tmr add / 20201221 tmr add exvec
 
         # corpus_id field is useless here
         if self.fields.get("corpus_id", None) is not None:
@@ -357,7 +359,20 @@ class Translator(object):
 
         start_time = time.time()
 
+        # 20201220 tmr add
+        # coss_vocab is dict of cos similarity
+        coss_vocab = data_iter.dataset.fields["exvec"].fields[0][1].vocab.itos
+        coss_vocab[0] = "0"
+        coss_vocab[1] = "1"
+        coss_vocab = [float(cos.strip()) for cos in coss_vocab]
+        #print(coss_vocab)
+
         for batch in data_iter:
+
+            
+
+
+
             batch_data = self.translate_batch(batch, data.src_vocabs, data.sim_vocabs, attn_debug)
             translations = xlation_builder.from_batch(batch_data)
 
